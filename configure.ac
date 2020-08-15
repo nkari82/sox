@@ -83,10 +83,7 @@ fi
 AX_APPEND_COMPILE_FLAGS([-fstack-protector-strong])
 AX_APPEND_LINK_FLAGS([-fstack-protector-strong])
 
-dnl Extra CFLAGS if we have gcc
-if test "$GCC" = "yes"; then
-    CFLAGS="$CFLAGS -Wall -Wmissing-prototypes -Wstrict-prototypes"
-fi
+AX_APPEND_COMPILE_FLAGS([-Wall -Wmissing-prototypes -Wstrict-prototypes])
 
 AX_APPEND_LINK_FLAGS([-Wl,-z,defs])
 
