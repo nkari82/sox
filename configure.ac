@@ -86,14 +86,9 @@ AX_APPEND_LINK_FLAGS([-fstack-protector-strong])
 dnl Extra CFLAGS if we have gcc
 if test "$GCC" = "yes"; then
     CFLAGS="$CFLAGS -Wall -Wmissing-prototypes -Wstrict-prototypes"
-
-    dnl Define stricter policy on GNU/Linux, all symbols must be resolved
-    case $target in
-      *linux* | *solaris*)
-        LDFLAGS="$LDFLAGS -Wl,-z,defs"
-        ;;
-    esac
 fi
+
+AX_APPEND_LINK_FLAGS([-Wl,-z,defs])
 
 AC_ARG_WITH(distro,
     AS_HELP_STRING([--with-distro=name], [Provide distribution name]),
