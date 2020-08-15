@@ -111,16 +111,6 @@ dnl Large File Support
 AC_SYS_LARGEFILE
 AC_FUNC_FSEEKO
 
-dnl Allow libtool to be silenced
-AC_MSG_CHECKING([whether libtool should be silenced])
-AC_ARG_ENABLE(silent-libtool,
-    AS_HELP_STRING([--disable-silent-libtool], [Verbose libtool]),,enable_silent_libtool=yes)
-AC_MSG_RESULT($enable_silent_libtool)
-if test "$enable_silent_libtool" = "yes"; then
-    LIBTOOLFLAGS=--silent
-fi
-AC_SUBST(LIBTOOLFLAGS)
-
 dnl Check if ltdl should be enabled.
 using_win32_ltdl="no"
 if test "$using_libltdl" != "no"; then
