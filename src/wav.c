@@ -603,7 +603,6 @@ static const struct wave_format wave_formats[] = {
     { WAVE_FORMAT_OLIADPCM,             "Olivetti ADPCM" },
     { WAVE_FORMAT_OLISBC,               "Olivetti CELP" },
     { WAVE_FORMAT_OLIOPR,               "Olivetti OPR" },
-    { }
 };
 
 static const struct wave_format *wav_find_format(unsigned tag)
