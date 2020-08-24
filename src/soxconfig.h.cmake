@@ -55,3 +55,4 @@
 #cmakedefine HAVE_VSNPRINTF           1
 #cmakedefine HAVE_WAVPACK             1
 #cmakedefine WORDS_BIGENDIAN          1
+#cmakedefine HAVE_SYS_IOCTL_H          1

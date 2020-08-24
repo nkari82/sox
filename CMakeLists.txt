@@ -89,6 +89,7 @@ check_include_files("sys/types.h"        HAVE_SYS_TYPES_H)
 check_include_files("sys/utsname.h"      HAVE_SYS_UTSNAME_H)
 check_include_files("termios.h"          HAVE_TERMIOS_H)
 check_include_files("unistd.h"           HAVE_UNISTD_H)
+check_include_files("sys/ioctl.h" 			HAVE_SYS_IOCTL_H)
 
 check_function_exists("fmemopen"         HAVE_FMEMOPEN)
 check_function_exists("fseeko"           HAVE_FSEEKO)
