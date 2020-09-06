@@ -222,26 +222,15 @@ fi
 AC_SUBST(LIBTOOLFLAGS)
 
 dnl Check if ltdl should be enabled.
-using_win32_ltdl="no"
 if test "$using_libltdl" != "no"; then
-  case $target in
-    *mingw*)
-    AC_DEFINE([HAVE_WIN32_LTDL_H], 1, [Define to 1 to use internal win32 ltdl])
-    LIBLTDL=""
-    using_win32_ltdl="yes"
-    ;;
-    *)
-     AC_CHECK_HEADERS(ltdl.h,
+    AC_CHECK_HEADERS(ltdl.h,
 		     AC_CHECK_LIB(ltdl, lt_dlinit, LIBLTDL="$LIBLTDL -lltdl",
 				  using_libltdl=no), using_libltdl=no)
-    ;;
-  esac
 fi
 if test "$using_libltdl" = yes; then
   AC_DEFINE([HAVE_LIBLTDL], 1, [Define to 1 if you have libltdl])
 fi
-AM_CONDITIONAL(HAVE_LIBLTDL, test x$using_libltdl = xyes -a x$using_win32_ltdl = xno)
-AM_CONDITIONAL(HAVE_WIN32_LTDL, test x$using_win32_ltdl = xyes)
+AM_CONDITIONAL(HAVE_LIBLTDL, test x$using_libltdl = xyes)
 AC_SUBST(LIBLTDL)
 
 
@@ -378,10 +367,6 @@ if test "$with_lame" != "no"; then
       AC_CHECK_HEADERS(lame/lame.h,,
         [AC_CHECK_HEADERS(lame.h, [], using_lame=no)])
       AC_CHECK_LIB(mp3lame, lame_get_lametag_frame, MP3_LIBS="$MP3_LIBS -lmp3lame", using_lame=no)
-      AC_CHECK_LIB(mp3lame, id3tag_set_fieldvalue, using_lame=$using_lame)
-      if test "$ac_cv_lib_mp3lame_id3tag_set_fieldvalue" = yes; then
-        AC_DEFINE(HAVE_LAME_ID3TAG, 1, [Define to 1 if lame supports optional ID3 tags.])
-      fi
       if test "$with_lame" = "yes" -a "$using_lame" = "no"; then
         AC_MSG_FAILURE([cannot find LAME])
       fi
@@ -456,30 +441,32 @@ AC_OPTIONAL_FORMAT(flac, FLAC,
     [PKG_CHECK_MODULES([FLAC], [flac], [], [using_flac=no])])
 
 
-dnl When enable_dl_amrbw, do not let add libraries to be linked in
-dnl since they will be dlopen()'ed instead.
-ac_sox_save_AMRWB_LIBS="$AMRWB_LIBS"
-tmp_using_amrwb=$opt_default
+tmp_using_amrwb=no
 AC_CHECK_HEADERS(opencore-amrwb/dec_if.h,
-		 [AC_CHECK_LIB(opencore-amrwb, D_IF_init, 
-		  AMRWB_LIBS="$AMRWB_LIBS -lopencore-amrwb", tmp_using_amrwb=no)],
-		  [AC_CHECK_HEADERS(amrwb/dec.h, 
-		   [AC_CHECK_LIB(amrwb, D_IF_init, 
-		    AMRWB_LIBS="$AMRWB_LIBS -lamrwb",tmp_using_amrwb=no)], 
-		    tmp_using_amrwb=no)])
-AC_ARG_ENABLE(dl_amrwb,
-	      AS_HELP_STRING([--enable-dl-amrwb], 
-			     [Dlopen amrbw instead of linking in.]),
-			     enable_dl_amrwb=$enableval, enable_dl_amrwb=no)
-if test "x$using_libltdl" = "xyes" -a "x$enable_dl_amrwb" = "xyes"; then
-  AC_DEFINE(DL_AMRWB, 1, [Define to dlopen() amrwb.]) 
-  dnl When enable_dl_amrwb, do not let SOX_PATH_AMRWB add libraries
-  dnl to be linked in (since they will be dlopen()'ed instead).
-  AMRWB_LIBS="$ac_sox_save_AMRWB_LIBS"
-  dnl Force to using regardless if headers or libraries were found.
-  tmp_using_amrwb=yes
+    [AC_CHECK_LIB(opencore-amrwb, D_IF_init,
+        [OPENCORE_AMRWB_LIBS="$OPENCORE_AMRWB_LIBS -lopencore-amrwb"; tmp_using_amrwb=$opt_default])])
+AC_CHECK_HEADERS(vo-amrwbenc/enc_if.h,
+    [AC_CHECK_LIB(vo-amrwbenc, E_IF_init,
+        [VO_AMRWBENC_LIBS="$VO_AMRWBENC_LIBS -lvo-amrwbenc"; tmp_using_amrwb=$opt_default])])
+AC_ARG_ENABLE(dl_opencore_amrwb,
+	      AS_HELP_STRING([--enable-dl-opencore-amrwb],
+			     [Dlopen opencore-amrbw instead of linking in.]))
+AC_ARG_ENABLE(dl_vo_amrwbenc,
+	      AS_HELP_STRING([--enable-dl-vo-amrwbenc],
+			     [Dlopen vo-amrbwenc instead of linking in.]))
+if test "$using_libltdl" != "yes"; then
+  enable_dl_opencore_amrwb=no
+  enable_dl_vo_amrwbenc=no
+fi
+if test "$enable_dl_opencore_amrwb" = "yes"; then
+  AC_DEFINE(DL_OPENCORE_AMRWB, 1, [Define to dlopen() opencore-amrwb.])
 else
-  enable_dl_amrwb="no"
+  AMRWB_LIBS="$AMRWB_LIBS $OPENCORE_AMRWB_LIBS"
+fi
+if test "$enable_dl_vo_amrwbenc" = "yes"; then
+  AC_DEFINE(DL_VO_AMRWBENC, 1, [Define to dlopen() vo-amrwbenc.])
+else
+  AMRWB_LIBS="$AMRWB_LIBS $VO_AMRWBENC_LIBS"
 fi
 AC_OPTIONAL_FORMAT(amrwb, AMRWB, [using_amrwb=$tmp_using_amrwb])
 
@@ -490,23 +477,19 @@ tmp_using_amrnb=$opt_default
 AC_CHECK_HEADERS(opencore-amrnb/interf_dec.h, 
 		 [AC_CHECK_LIB(opencore-amrnb, Decoder_Interface_init, 
 		  AMRNB_LIBS="$AMRNB_LIBS -lopencore-amrnb", tmp_using_amrnb=no)],
-		  [AC_CHECK_HEADER(amrnb/sp_dec.h, 
-		   [AC_CHECK_LIB(amrnb, Decoder_Interface_init, 
-		    AMRNB_LIBS="$AMRNB_LIBS -lamrnb", tmp_using_amrnb=no)], 
-		    tmp_using_amrnb=no)])
-AC_ARG_ENABLE(dl_amrnb,
-	      AS_HELP_STRING([--enable-dl-amrnb], 
-			     [Dlopen amrnb instead of linking in.]),
-			     enable_dl_amrnb=$enableval, enable_dl_amrnb=no)
-if test "x$using_libltdl" = "xyes" -a "x$enable_dl_amrnb" = "xyes"; then
-  AC_DEFINE(DL_AMRNB, 1, [Define to dlopen() amrnb.]) 
+		  [tmp_using_amrnb=no])
+AC_ARG_ENABLE(dl_opencore_amrnb,
+	      AS_HELP_STRING([--enable-dl-opencore-amrnb],
+			     [Dlopen opencore-amrnb instead of linking in.]))
+if test "$using_libltdl" = "yes" -a "$enable_dl_opencore_amrnb" = "yes"; then
+  AC_DEFINE(DL_OPENCORE_AMRNB, 1, [Define to dlopen() opencore-amrnb.])
   dnl When enable_dl_amrnb, do not let SOX_PATH_AMRNB add libraries
   dnl to be linked in (since they will be dlopen()'ed instead).
   AMRNB_LIBS="$ac_sox_save_AMRNB_LIBS"
   dnl Force to using regardless if headers or libraries were found.
   tmp_using_amrnb=yes
 else
-  enable_dl_amrnb="no"
+  enable_dl_opencore_amrnb="no"
 fi
 AC_OPTIONAL_FORMAT(amrnb, AMRNB, [using_amrnb=$tmp_using_amrnb])
 
@@ -653,11 +636,12 @@ echo
 echo "OPTIONAL FILE FORMATS"
 echo "amrnb......................$using_amrnb"
 if test "x$using_amrnb" = "xyes"; then
-echo " dlopen amrnb..............$enable_dl_amrnb"
+echo " dlopen amrnb..............${enable_dl_opencore_amrnb:-no}"
 fi
 echo "amrwb......................$using_amrwb"
 if test "x$using_amrwb" = "xyes"; then
-echo " dlopen amrwb..............$enable_dl_amrwb"
+echo " dlopen opencore-amrwb.....${enable_dl_opencore_amrwb:-no}"
+echo " dlopen vo-amrwbenc........${enable_dl_vo_amrwbenc:-no}"
 fi
 echo "flac.......................$using_flac"
 echo "gsm........................$using_gsm"
@@ -666,9 +650,6 @@ echo "mp2/mp3....................$using_mp3"
 echo " id3tag....................$using_id3tag"
 echo " lame......................$using_lame"
 if test "x$using_lame" = "xyes"; then
-if test "x$enable_dl_lame" != "xyes"; then
-echo " lame id3tag...............$ac_cv_lib_mp3lame_id3tag_set_fieldvalue"
-fi
 echo " dlopen lame...............$enable_dl_lame"
 fi
 echo " mad.......................$using_mad"
