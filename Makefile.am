@@ -15,10 +15,7 @@ EXTRA_DIST = sox.txt soxi.txt soxformat.txt libsox.txt \
 	     cygbuild README.win32 README.osx scripts/batch-example.bat \
 	     README.sh FEATURES.in
 
-if HAVE_PKGCONFIG
-pkgconfigdir = @PKGCONFIGDIR@
 pkgconfig_DATA = sox.pc
-endif
 
 play.1 rec.1: sox.1
 	$(RM) $@ && $(LN_S) $< $@
@@ -124,7 +121,3 @@ uninstall-hook:
 	$(RM) $(DESTDIR)$(mandir)/man1/play.1
 	$(RM) $(DESTDIR)$(mandir)/man1/rec.1
 	$(RM) $(DESTDIR)$(mandir)/man7/soxeffect.7
-
-# Automatically update libtool script if it gets out-of-date
-libtool: $(LIBTOOL_DEPS)
-	$(SHELL) ./config.status --recheck

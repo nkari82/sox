@@ -15,13 +15,6 @@ AM_LDFLAGS = -avoid-version -module
 AM_CPPFLAGS += -DPKGLIBDIR="\"$(pkglibdir)\""
 endif
 
-# Pass flags from --enable-silent-libtool
-LIBTOOL = @LIBTOOL@ @LIBTOOLFLAGS@
-
-if HAVE_DISTRO
-AM_CPPFLAGS += -DDISTRO="\"@DISTRO@\""
-endif
-
 
 
 #########################
@@ -34,7 +27,8 @@ lib_LTLIBRARIES = libsox.la
 include_HEADERS = sox.h
 sox_SOURCES = sox.c
 if HAVE_WIN32_GLOB
-sox_SOURCES += win32-glob.c win32-glob.h
+sox_SOURCES += win32/glob.c win32/glob.h
+AM_CPPFLAGS += -I$(srcdir)/win32
 endif
 sox_LDADD = libsox.la
 example0_SOURCES = example0.c
@@ -77,20 +71,29 @@ if HAVE_PNG
     libsox_la_SOURCES += spectrogram.c
 endif
 
+libsox_la_LIBADD =
+
 # Libraries required by libsox for file handlers, effects, or utils;
 # regardless if libltdl is used or not.
-libsox_la_LIBADD = @PNG_LIBS@
+if HAVE_PNG
+libsox_la_LIBADD += @PNG_LIBS@
+endif
 if HAVE_MAGIC
 libsox_la_LIBADD += @MAGIC_LIBS@
 endif
+if HAVE_LIBGSM
+libsox_la_LIBADD += @LIBGSM_LIBS@
+endif
 
 libsox_la_CFLAGS =
-libsox_la_LDFLAGS = @APP_LDFLAGS@ -version-info @SHLIB_VERSION@ \
-  -export-symbols-regex '^(sox_.*|lsx_(([cm]|re)alloc.*|check_read_params|(close|open)_dllibrary|(debug(_more|_most)?|fail|report|warn)_impl|eof|error|fail_errno|filelength|find_(enum_(text|value)|file_extension)|flush|getopt(_init)?|lpc10_(create_(de|en)coder_state|(de|en)code)|raw(read|write)|read(_b_buf|buf|chars)|rewind|seeki|sigfigs3p?|strcasecmp|strdup|tell|unreadb|write(b|_b_buf|buf|s)))$$'
+libsox_la_LDFLAGS = -no-undefined -version-info @SHLIB_VERSION@ \
+  -export-symbols $(srcdir)/libsox.sym
+
+EXTRA_libsox_la_DEPENDENCIES = $(srcdir)/libsox.sym
 
 if HAVE_LIBLTDL
-  libsox_la_CFLAGS += $(LTDLINCL) 
-  libsox_la_LDFLAGS += $(LIBLTDL) 
+  libsox_la_CFLAGS += $(LIBLTDL_CFLAGS)
+  libsox_la_LIBADD += $(LIBLTDL_LIBS)
 endif
 
 
@@ -110,8 +113,6 @@ libsox_la_SOURCES += raw-fmt.c s1-fmt.c s2-fmt.c s3-fmt.c \
   sounder.c soundtool.c sphere.c tx16w.c voc.c vox-fmt.c ima-fmt.c adpcm.c adpcm.h \
   ima_rw.c ima_rw.h wav.c wve.c xa.c nulfile.c f4-fmt.c f8-fmt.c gsrt.c
 
-libsox_la_LIBADD += @LPC10_LIBS@ @LIBLPC10_LIBADD@
-
 pkglib_LTLIBRARIES =
 
 include optional-fmts.am
@@ -130,33 +131,22 @@ example6_LDADD = ${sox_LDADD}
 EXTRA_DIST = monkey.wav optional-fmts.am \
 	     tests.sh testall.sh tests.bat testall.bat test-comments
 
-all: sox$(EXEEXT) play$(EXEEXT) rec$(EXEEXT) soxi$(EXEEXT) sox_sample_test$(EXEEXT) example0$(EXEEXT) example1$(EXEEXT) example2$(EXEEXT) example3$(EXEEXT) example4$(EXEEXT) example5$(EXEEXT) example6$(EXEEXT)
+all: sox$(EXEEXT)
 
-play$(EXEEXT) rec$(EXEEXT): sox$(EXEEXT)
-	if test "$(PLAYRECLINKS)" = "yes"; then	\
-		test -f sox$(EXEEXT) && ( $(RM) $@ && $(LN_S) sox$(EXEEXT) $@ ) || $(LN_S) sox $@; \
-	fi
+examples: example0$(EXEEXT) example1$(EXEEXT) example2$(EXEEXT) example3$(EXEEXT) example4$(EXEEXT) example5$(EXEEXT) example6$(EXEEXT)
 
-soxi$(EXEEXT): sox$(EXEEXT)
-	if test "$(SYMLINKS)" = "yes"; then	\
-		test -f sox$(EXEEXT) && ( $(RM) $@ && $(LN_S) sox$(EXEEXT) $@ ) || $(LN_S) sox $@; \
-	fi
+extras: examples sox_sample_test$(EXEEXT)
+
+MAKELINKS = for n in $(SYMLINKS); do $(RM) $$n$(EXEEXT) && $(LN_S) sox$(EXEEXT) $$n$(EXEEXT); done
+
+all-local: sox$(EXEEXT)
+	$(MAKELINKS)
 
 install-exec-hook:
-	if test "$(PLAYRECLINKS)" = "yes"; then	\
-		cd $(DESTDIR)$(bindir); $(RM) play$(EXEEXT) rec$(EXEEXT); $(LN_S) sox$(EXEEXT) play$(EXEEXT); $(LN_S) sox$(EXEEXT) rec$(EXEEXT); \
-	fi
-	if test "$(SYMLINKS)" = "yes"; then	\
-		cd $(DESTDIR)$(bindir); $(RM) soxi$(EXEEXT); $(LN_S) sox$(EXEEXT) soxi$(EXEEXT); \
-	fi
+	cd $(DESTDIR)$(bindir) && $(MAKELINKS)
 
 uninstall-hook:
-	if test "$(PLAYRECLINKS)" = "yes"; then	\
-		cd $(DESTDIR)$(bindir); $(RM) play$(EXTEXT) rec$(EXEEXT); \
-	fi
-	if test "$(SYMLINKS)" = "yes"; then	\
-		cd $(DESTDIR)$(bindir); $(RM) soxi$(EXEEXT); \
-	fi
+	cd $(DESTDIR)$(bindir) && $(RM) play$(EXEEXT) rec$(EXEEXT) soxi$(EXEEXT)
 
 clean-local:
 	$(RM) play$(EXEEXT) rec$(EXEEXT) soxi$(EXEEXT)
