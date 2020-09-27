@@ -142,7 +142,9 @@ add_library(lib${PROJECT_NAME}
   ${effects_srcs}         util
   formats                 libsox                  xmalloc
 )
+
 add_executable(${PROJECT_NAME} ${PROJECT_NAME}.c)
+target_include_directories(libsox PRIVATE ../lpc10)
 target_link_libraries(${PROJECT_NAME} lib${PROJECT_NAME} lpc10 ${optional_libs})
 add_executable(sox_sample_test sox_sample_test.c)
 find_program(LN ln)
